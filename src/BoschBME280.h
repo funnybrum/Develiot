@@ -2,8 +2,6 @@
 
 #include "bme280.h"
 
-#define BME280_READ_INTERVAL 5000
-
 class BoschBME280 {
     public:
         bool begin(uint8_t addr=0x76);
