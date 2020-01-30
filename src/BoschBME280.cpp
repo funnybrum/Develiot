@@ -10,20 +10,22 @@ bool BoschBME280::begin(uint8_t addr) {
     bme280.delay_ms = delay;
     bme280.dev_id = addr;
 
-    bme280.settings.osr_h = BME280_OVERSAMPLING_1X;
+    bme280.settings.osr_h = BME280_OVERSAMPLING_2X;
     bme280.settings.osr_p = BME280_NO_OVERSAMPLING;
     bme280.settings.osr_t = BME280_OVERSAMPLING_2X;
+    bme280.settings.filter = BME280_FILTER_COEFF_16;
 
-    Wire.begin();
 
     errors += bme280_init(&bme280) != BME280_OK;
-    errors += (bme280_set_sensor_settings(BME280_OSR_TEMP_SEL|BME280_OSR_HUM_SEL, &bme280) != BME280_OK) << 1;
+    errors += (bme280_set_sensor_settings(BME280_OSR_TEMP_SEL|BME280_OSR_HUM_SEL|BME280_FILTER_SEL, &bme280) != BME280_OK) << 1;
     errors += (bme280_set_sensor_mode(BME280_FORCED_MODE, &bme280) != BME280_OK) << 2;
     req_delay = bme280_cal_meas_delay(&bme280.settings);
 
     if (errors > 0) {
         Serial.print("Failed to initialize BME280:");
         Serial.println(errors);
+    } else {
+        Serial.print("BME280 initialized");
     }
 
     return errors == 0;
@@ -41,6 +43,8 @@ bool BoschBME280::measure() {
     if (errors > 0) {
         Serial.print("Failed to read BME280:");
         Serial.println(errors);
+    } else {
+        Serial.println("Read passed for BME280");
     }
 
     return errors == 0;

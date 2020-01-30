@@ -6,7 +6,7 @@
 
 class BoschBME280 {
     public:
-        bool begin(uint8_t addr=0x77);
+        bool begin(uint8_t addr=0x76);
         bool measure();
 
         // temperature with the units 10 * °C, i.e. 232 is 23.2°C
