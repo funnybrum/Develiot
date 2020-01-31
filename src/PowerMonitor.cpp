@@ -1,30 +1,16 @@
 #include "PowerMonitor.h"
-#include <avr/sleep.h>
+#include "Helpers.h"
 
 BoschBME280 bme280 = BoschBME280();
 MaximDS1338 ds1338 = MaximDS1338();
-
-// TODO Check how this can be replaced with the EMPTY_INTERRUPT macro.
-void wakeup() {}
-
-// Sleep until the next minute has started. This will sleep untill the next minute has started.
-void sleep() {
-    Serial.flush();  // TODO check if this is necessary once the LoraWAN module is attached.
-    sleep_enable();
-    set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-    int8_t seconds = ds1338.getSecond();
-    while (seconds < 60) {
-        sleep_cpu();
-        seconds++;
-    }
-    sleep_disable();
-}
+VoltMeter voltMeter = VoltMeter();
+DataCollector dataCollector = DataCollector();
 
 void setup() {
     // Needed for the DS1338 and the BME280
     Wire.begin();
 
-    // Needed for the RN2483A serial communication and for debugging purposes.
+    // Needed for the RN2483A serial communication (and for debugging purposes).
     Serial.begin(9600);
     while (!Serial);
       
@@ -38,6 +24,7 @@ void setup() {
     attachInterrupt(digitalPinToInterrupt(WAKEUP_INTERRUPT_PIN), wakeup, FALLING);
 
     bme280.begin();
+    voltMeter.begin();
     ds1338.enableSqOut1HZ();
 
     // To be invoked just once when the initial setup is being done.
@@ -47,15 +34,29 @@ void setup() {
 void loop() {
     bme280.measure();
     ds1338.readTime();
+    uint16_t acv = voltMeter.getACVoltage();
+    uint16_t bv = voltMeter.getBatteryVoltage();
 
-    Serial.print("m:");
-    Serial.print(ds1338.getMinute());
-    Serial.print(":");
-    Serial.print(ds1338.getSecond());
-    Serial.print(",t=");
-    Serial.print(bme280.getTemperature() / 10.0, 1);
-    Serial.print(",h=");
-    Serial.println(bme280.getHumidity() / 10.0, 1);
+    Serial.print("Temp is ");
+    Serial.print(bme280.getTemperature() / 10.0);
+    Serial.print("C, humidity is ");
+    Serial.println(bme280.getHumidity() / 10.0);
+
+
+    dataCollector.addSample(
+        ds1338.getMinute(),
+        bme280.getTemperature(),
+        bme280.getHumidity(),
+        acv,
+        bv
+    );
+
+    if (shouldPush(acv)) {
+        // TODO - push the data over LoraWAN.
+        dataCollector.reset();
+    }
+
+    dataCollector.dumpToSerial();
 
     sleep();
 }

@@ -37,6 +37,11 @@ class DataCollector {
         // Reset the buffer.
         void reset();
 
+        // Get the number of samples in the buffer.
+        uint8_t getSamplesCount();
+
+        void dumpToSerial();
+
     private:
         uint8_t buffer[243];
         uint8_t pointer = 0;
