@@ -5,6 +5,7 @@ BoschBME280 bme280 = BoschBME280();
 MaximDS1338 ds1338 = MaximDS1338();
 VoltMeter voltMeter = VoltMeter();
 DataCollector dataCollector = DataCollector();
+TTN ttn = TTN();
 
 void setup() {
     // Needed for the DS1338 and the BME280
@@ -13,10 +14,6 @@ void setup() {
     // Needed for the RN2483A serial communication (and for debugging purposes).
     Serial.begin(9600);
     while (!Serial);
-      
-    // For debugging purposes.
-    pinMode(13, OUTPUT);
-    digitalWrite(13, HIGH);
 
     // The DS1338 is pinging the INT0 pin each second. Attach a function to the pin interrupt that
     // will be used to wake up from deep sleep.
@@ -26,22 +23,22 @@ void setup() {
     bme280.begin();
     voltMeter.begin();
     ds1338.enableSqOut1HZ();
+    bool ttnConnected = ttn.begin();
 
-    // To be invoked just once when the initial setup is being done.
+    if (!ttnConnected) {
+        Serial.print("Failed to connect to TTN over LoRaWAN!");
+    }
+
+    // For testing purposes on the prototype board with no RTC battery.
     ds1338.setTime(20, 1, 30, 23, 5, 0);
 }
 
 void loop() {
+    ttn.loop();
     bme280.measure();
     ds1338.readTime();
     uint16_t acv = voltMeter.getACVoltage();
     uint16_t bv = voltMeter.getBatteryVoltage();
-
-    Serial.print("Temp is ");
-    Serial.print(bme280.getTemperature() / 10.0);
-    Serial.print("C, humidity is ");
-    Serial.println(bme280.getHumidity() / 10.0);
-
 
     dataCollector.addSample(
         ds1338.getMinute(),
@@ -52,11 +49,15 @@ void loop() {
     );
 
     if (shouldPush(acv)) {
-        // TODO - push the data over LoraWAN.
-        dataCollector.reset();
+        if (ttn.send(dataCollector.getBuffer(), dataCollector.getBufferSize())) {
+            dataCollector.reset();
+        }
     }
 
-    dataCollector.dumpToSerial();
+    if (acv == 0) {
+        // If there is no AC - keep the LoRaWAN module in sleep.
+        ttn.sleep();
+    }
 
     sleep();
 }
