@@ -627,7 +627,7 @@ void TheThingsNetwork::showStatus()
 
 void TheThingsNetwork::configureEU868()
 {
-  sendMacSet(MAC_RX2, "3 869525000");
+  // sendMacSet(MAC_RX2, "3 869525000");
   sendChSet(MAC_CHANNEL_DRRANGE, 1, "0 6");
 
   char buf[10];
